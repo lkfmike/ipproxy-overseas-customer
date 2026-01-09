@@ -11,4 +11,10 @@ public interface AccountMapper {
     int countByEmail(@Param("email") String email);
 
     int insertAccount(Account account);
+
+    Account selectByUid(@Param("uid") Long uid);
+
+    Account selectByInviteCode(@Param("inviteCode") String inviteCode);
+
+    int updateAccount(Account account);
 }

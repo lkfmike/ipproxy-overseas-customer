@@ -3,7 +3,6 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ipproxy.overseas.customer.mapper.AccountMapper">
-
     <resultMap id="AccountResultMap" type="com.ipproxy.overseas.customer.entity.Account">
         <id column="uid" property="uid"/>
         <result column="email" property="email"/>
@@ -19,7 +18,17 @@
     </resultMap>
 
     <select id="selectByEmail" resultMap="AccountResultMap">
-        SELECT uid, email, password, nickname, telegram, remark, balance, invite_code, invited_by, parent_uid, created_at
+        SELECT uid,
+               email,
+               password,
+               nickname,
+               telegram,
+               remark,
+               balance,
+               invite_code,
+               invited_by,
+               parent_uid,
+               created_at
         FROM account
         WHERE email = #{email}
         LIMIT 1
@@ -31,9 +40,65 @@
         WHERE email = #{email}
     </select>
 
-    <insert id="insertAccount" parameterType="com.ipproxy.overseas.customer.entity.Account" useGeneratedKeys="true" keyProperty="uid" keyColumn="uid">
+    <insert id="insertAccount" parameterType="com.ipproxy.overseas.customer.entity.Account" useGeneratedKeys="true"
+            keyProperty="uid" keyColumn="uid">
         INSERT INTO account (email, password, balance, invited_by, parent_uid, created_at)
         VALUES (#{email}, #{password}, #{balance}, #{invitedBy}, #{parentUid}, NOW())
     </insert>
 
+    <select id="selectByUid" resultMap="AccountResultMap">
+        SELECT uid,
+               email,
+               password,
+               nickname,
+               telegram,
+               remark,
+               balance,
+               invite_code,
+               invited_by,
+               parent_uid,
+               created_at
+        FROM account
+        WHERE uid = #{uid}
+        LIMIT 1
+    </select>
+
+    <select id="selectByInviteCode" resultMap="AccountResultMap">
+        SELECT uid,
+               email,
+               password,
+               nickname,
+               telegram,
+               remark,
+               balance,
+               invite_code,
+               invited_by,
+               parent_uid,
+               created_at
+        FROM account
+        WHERE invite_code = #{inviteCode}
+        LIMIT 1
+    </select>
+
+    <update id="updateAccount" parameterType="com.ipproxy.overseas.customer.entity.Account">
+        UPDATE account
+        <set>
+            <if test="nickname != null">
+                nickname = #{nickname},
+            </if>
+            <if test="telegram != null">
+                telegram = #{telegram},
+            </if>
+            <if test="remark != null">
+                remark = #{remark},
+            </if>
+            <if test="password != null">
+                password = #{password},
+            </if>
+            <if test="balance != null">
+                balance = #{balance},
+            </if>
+        </set>
+        WHERE uid = #{uid}
+    </update>
 </mapper>

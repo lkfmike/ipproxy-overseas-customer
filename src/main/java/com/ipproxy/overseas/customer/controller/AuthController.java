@@ -2,7 +2,6 @@ package com.ipproxy.overseas.customer.controller;
 
 import com.ipproxy.overseas.customer.common.ApiResponse;
 import com.ipproxy.overseas.customer.entity.Account;
-import com.ipproxy.overseas.customer.exception.UnauthorizedException;
 import com.ipproxy.overseas.customer.entity.auth.LoginRequest;
 import com.ipproxy.overseas.customer.entity.auth.LoginResponse;
 import com.ipproxy.overseas.customer.entity.auth.MeResponse;
@@ -10,6 +9,7 @@ import com.ipproxy.overseas.customer.entity.auth.RefreshRequest;
 import com.ipproxy.overseas.customer.entity.auth.RefreshResponse;
 import com.ipproxy.overseas.customer.entity.auth.RegisterRequest;
 import com.ipproxy.overseas.customer.entity.auth.RegisterResponse;
+import com.ipproxy.overseas.customer.exception.UnauthorizedException;
 import com.ipproxy.overseas.customer.security.InMemoryTokenStore;
 import com.ipproxy.overseas.customer.security.JwtTokenService;
 import com.ipproxy.overseas.customer.security.JwtUser;
@@ -36,7 +36,7 @@ public class AuthController {
 
     @PostMapping("/auth/register")
     public ApiResponse<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
-        Account account = accountService.register(request.getEmail(), request.getPassword());
+        Account account = accountService.register(request.getEmail(), request.getPassword(), request.getInviteCode());
         String token = jwtTokenService.createAccessToken(String.valueOf(account.getUid()), account.getEmail());
         return ApiResponse.success(new RegisterResponse(String.valueOf(account.getUid()), account.getEmail(), token));
     }
@@ -45,6 +45,10 @@ public class AuthController {
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         Account account = accountService.authenticate(request.getEmail(), request.getPassword());
         String uid = String.valueOf(account.getUid());
+
+        // 登录前先踢掉旧的登录态（单一设备登录）
+        tokenStore.revokeAllRefreshTokensForUser(uid);
+
         JwtTokenService.TokenPair pair = jwtTokenService.issueTokenPair(uid, account.getEmail());
         tokenStore.storeRefreshToken(pair.getRefreshJti(), uid, pair.getRefreshExpiresAt());
         return ApiResponse.success(new LoginResponse(uid, account.getEmail(), pair.getAccessToken(), pair.getRefreshToken()));
@@ -71,9 +75,6 @@ public class AuthController {
         if (authentication == null || authentication.getPrincipal() == null) {
             throw new UnauthorizedException("未授权");
         }
-        JwtUser jwtUser = (JwtUser) authentication.getPrincipal();
-        tokenStore.revokeAllRefreshTokensForUser(jwtUser.getUserId());
-
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring("Bearer ".length()).trim();
