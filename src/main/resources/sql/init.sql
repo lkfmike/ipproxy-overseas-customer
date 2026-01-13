@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS `account` (
   `nickname` VARCHAR(64) DEFAULT NULL,
   `telegram` VARCHAR(64) DEFAULT NULL,
   `remark` VARCHAR(255) DEFAULT NULL,
+  `api_token` VARCHAR(64) DEFAULT NULL,
   `balance` DECIMAL(18,2) NOT NULL DEFAULT 0.00,
   `invite_code` VARCHAR(32) DEFAULT NULL,
   `invited_by` BIGINT NOT NULL DEFAULT 0,

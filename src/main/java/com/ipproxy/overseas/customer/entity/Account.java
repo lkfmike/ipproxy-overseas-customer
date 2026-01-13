@@ -18,6 +18,7 @@ public class Account {
     private String password;
     private String nickname;
     private String telegram;
+    private String apiToken;
     private String remark;
     private BigDecimal balance;
     private String inviteCode;

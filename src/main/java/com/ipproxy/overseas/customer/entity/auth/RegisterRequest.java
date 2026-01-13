@@ -12,5 +12,8 @@ public class RegisterRequest {
     private String email;
     @NotBlank(message = "password不能为空")
     private String password;
+    @NotBlank(message = "code不能为空")
+    private String code;
+    private String telegram;
     private String inviteCode;
 }

@@ -54,18 +54,22 @@ public class AccountController {
 
     @PostMapping("/send-verify-code")
     public ApiResponse<Void> sendVerifyCode(@Valid @RequestBody SendVerifyCodeRequest request) {
-        verifyCodeService.sendCode(request.getEmail(), request.getType());
+        try {
+            verifyCodeService.sendCode(request.getEmail(), request.getType());
+        } catch (RuntimeException e) {
+            return ApiResponse.error(429, e.getMessage());
+        }
         return ApiResponse.successMessage("验证码已发送");
     }
 
     @PostMapping("/reset-password")
     public ApiResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
-        boolean verified = verifyCodeService.verifyCode(request.getEmail(), "reset_password", request.getVerifyCode());
-        if (!verified) {
-            throw new IllegalArgumentException("验证码无效或已过期");
+        try {
+            verifyCodeService.verifyCode(request.getEmail(), "reset-password", request.getCode());
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException(e.getMessage());
         }
-
-        accountService.updatePasswordByEmail(request.getEmail(), request.getNewPassword());
+        accountService.updatePasswordByEmail(request.getEmail(), request.getPassword());
         return ApiResponse.successMessage("密码重置成功");
     }
 
