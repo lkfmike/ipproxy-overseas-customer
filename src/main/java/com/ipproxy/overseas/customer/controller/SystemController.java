@@ -1,4 +1,23 @@
 package com.ipproxy.overseas.customer.controller;
 
-public class SystemController {
+import com.ipproxy.overseas.customer.common.ApiResponse;
+import com.ipproxy.overseas.customer.entity.system.LocationResponse;
+import com.ipproxy.overseas.customer.service.SystemService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+
+@RestController
+@RequestMapping("/system")
+public class SystemController extends BaseController {
+    @Autowired
+    private SystemService systemService;
+
+    @GetMapping("/locations")
+    public ApiResponse<LocationResponse.LocationData> getLocations(Authentication authentication, @RequestParam String type) {
+        Long uid = getCurrentUserId(authentication);
+        LocationResponse.LocationData data = systemService.locations(type, uid);
+        return ApiResponse.success(data);
+    }
 }

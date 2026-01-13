@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ipproxy.overseas.customer.mapper.AreaRegionInfoMapper">
+    <resultMap id="AreaRegionInfoResultMap" type="com.ipproxy.overseas.customer.entity.AreaRegionInfo">
+        <id column="id" property="id"/>
+        <result column="area" property="area"/>
+        <result column="area_cn" property="areaCn"/>
+        <result column="region" property="region"/>
+        <result column="region_cn" property="regionCn"/>
+        <result column="is_show" property="isShow"/>
+        <result column="is_available" property="isAvailable"/>
+    </resultMap>
+
+    <select id="selectAll" resultMap="AreaRegionInfoResultMap">
+        SELECT id, area, area_cn, region, region_cn, is_show, is_available
+        FROM area_region_info
+        WHERE is_show = 1
+        ORDER BY area, region
+    </select>
+
+    <select id="selectByArea" resultMap="AreaRegionInfoResultMap">
+        SELECT id, area, area_cn, region, region_cn, is_show, is_available
+        FROM area_region_info
+        WHERE area = #{area} AND is_show = 1
+        ORDER BY region
+    </select>
+
+    <select id="selectByAreaRegion" resultMap="AreaRegionInfoResultMap">
+        SELECT id, area, area_cn, region, region_cn, is_show, is_available
+        FROM area_region_info
+        WHERE area = #{area} AND region = #{region} AND is_show = 1
+    </select>
+</mapper>
