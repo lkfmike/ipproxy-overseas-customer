@@ -6,6 +6,7 @@ import com.ipproxy.overseas.customer.common.AsnType;
 import com.ipproxy.overseas.customer.common.StockCache;
 import com.ipproxy.overseas.customer.entity.StaticProxyPrice;
 import com.ipproxy.overseas.customer.entity.system.LocationResponse;
+import jdk.nashorn.internal.scripts.JS;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +21,7 @@ public class SystemService {
     @Autowired
     private StaticProxyPriceService staticProxyPriceService;
 
-    public LocationResponse.LocationData locations(String type, Long uid) {
+    public List<LocationResponse> locations(String type, Long uid) {
         List<JSONObject> stocks = type.equals(AsnType.ISP) ? StockCache.STATIC_STOCK_ISP_CACHE : StockCache.STATIC_STOCK_HOSTING_CACHE;
         List<StaticProxyPrice> prices = staticProxyPriceService.getProxyPriceListByUid(uid);
         Map<String, JSONArray> groupedStocks = new HashMap<>();
@@ -37,6 +38,25 @@ public class SystemService {
             stock.set("discountPrice", discountPrice);
             groupedStocks.computeIfAbsent(state, k -> new JSONArray()).put(stock);
         }
-        return null;
+        List<LocationResponse> list = new ArrayList<>();
+        groupedStocks.forEach((k, v) -> {
+            List<LocationResponse.Country> countries = new ArrayList<>();
+            for (int i = 0; i < v.size(); i++) {
+                JSONObject item = v.getJSONObject(i);
+                LocationResponse.Country country = LocationResponse.Country.builder()
+                        .id(item.getInt("id"))
+                        .area(item.getStr("area"))
+                        .areaCn(item.getStr("areaCn"))
+                        .region(item.getStr("region"))
+                        .regionCn(item.getStr("regionCn"))
+                        .available(item.getInt("status") == 1)
+                        .price(item.getBigDecimal("price").doubleValue())
+                        .discountPrice(item.getBigDecimal("discountPrice").doubleValue()).build();
+                countries.add(country);
+            }
+            LocationResponse response = LocationResponse.builder().state(k).countries(countries).build();
+            list.add(response);
+        });
+        return list;
     }
 }

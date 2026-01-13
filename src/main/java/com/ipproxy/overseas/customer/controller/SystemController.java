@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 
 @RestController
 @RequestMapping("/system")
@@ -15,9 +17,9 @@ public class SystemController extends BaseController {
     private SystemService systemService;
 
     @GetMapping("/locations")
-    public ApiResponse<LocationResponse.LocationData> getLocations(Authentication authentication, @RequestParam String type) {
+    public ApiResponse<List<LocationResponse>> getLocations(Authentication authentication, @RequestParam String type) {
         Long uid = getCurrentUserId(authentication);
-        LocationResponse.LocationData data = systemService.locations(type, uid);
+        List<LocationResponse> data = systemService.locations(type, uid);
         return ApiResponse.success(data);
     }
 }
