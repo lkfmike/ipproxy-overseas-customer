@@ -1,12 +1,10 @@
 package com.ipproxy.overseas.customer.service;
 
-import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import com.ipproxy.overseas.customer.common.AsnType;
 import com.ipproxy.overseas.customer.common.StockCache;
 import com.ipproxy.overseas.customer.entity.StaticProxyPrice;
 import com.ipproxy.overseas.customer.entity.system.LocationResponse;
-import jdk.nashorn.internal.scripts.JS;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -24,39 +22,64 @@ public class SystemService {
     public List<LocationResponse> locations(String type, Long uid) {
         List<JSONObject> stocks = type.equals(AsnType.ISP) ? StockCache.STATIC_STOCK_ISP_CACHE : StockCache.STATIC_STOCK_HOSTING_CACHE;
         List<StaticProxyPrice> prices = staticProxyPriceService.getProxyPriceListByUid(uid);
-        Map<String, JSONArray> groupedStocks = new HashMap<>();
-        for (int i = 0; i < stocks.size(); i++) {
-            JSONObject stock = stocks.get(i);
+        // 创建价格映射以提高查找效率
+        Map<String, StaticProxyPrice> priceMap = new HashMap<>();
+        for (StaticProxyPrice price : prices) {
+            String key = buildPriceKey(price.getType(), price.getQuality(), price.getArea(), price.getRegion());
+            priceMap.put(key, price);
+        }
+        // 按状态分组股票
+        Map<String, List<JSONObject>> groupedStocks = new HashMap<>();
+        for (JSONObject stock : stocks) {
             String state = stock.getStr("state", "其他");
-            String area = stock.getStr("area");
-            String region = stock.getStr("region");
-            String asnType = stock.getStr("asnType");
-            String quality = stock.getStr("quality");
-            BigDecimal price = prices.stream().filter(p -> p.getType().equals(asnType) && p.getQuality().equals(quality) && p.getArea().equals(area) && p.getRegion().equals(region)).findFirst().map(StaticProxyPrice::getPrice).orElse(new BigDecimal(9999));
-            BigDecimal discountPrice = prices.stream().filter(p -> p.getType().equals(asnType) && p.getQuality().equals(quality) && p.getArea().equals(area) && p.getRegion().equals(region)).findFirst().map(StaticProxyPrice::getDiscountPrice).orElse(new BigDecimal(9999));
-            stock.set("price", price);
-            stock.set("discountPrice", discountPrice);
-            groupedStocks.computeIfAbsent(state, k -> new JSONArray()).put(stock);
+            groupedStocks.computeIfAbsent(state, k -> new ArrayList<>()).add(stock);
         }
         List<LocationResponse> list = new ArrayList<>();
-        groupedStocks.forEach((k, v) -> {
+        for (Map.Entry<String, List<JSONObject>> entry : groupedStocks.entrySet()) {
+            String state = entry.getKey();
+            List<JSONObject> stockList = entry.getValue();
             List<LocationResponse.Country> countries = new ArrayList<>();
-            for (int i = 0; i < v.size(); i++) {
-                JSONObject item = v.getJSONObject(i);
+            for (JSONObject stock : stockList) {
+                String area = stock.getStr("area");
+                String region = stock.getStr("region");
+                String asnType = stock.getStr("asnType");
+                String quality = stock.getStr("quality");
+                String priceKey = buildPriceKey(asnType, quality, area, region);
+                StaticProxyPrice priceInfo = priceMap.get(priceKey);
+                BigDecimal price = new BigDecimal(9999);
+                BigDecimal discountPrice = new BigDecimal(9999);
+                if (priceInfo != null) {
+                    price = priceInfo.getPrice() != null ? priceInfo.getPrice() : new BigDecimal(9999);
+                    discountPrice = priceInfo.getDiscountPrice() != null ? priceInfo.getDiscountPrice() : new BigDecimal(9999);
+                }
+                stock.set("price", price);
+                stock.set("discountPrice", discountPrice);
                 LocationResponse.Country country = LocationResponse.Country.builder()
-                        .id(item.getInt("id"))
-                        .area(item.getStr("area"))
-                        .areaCn(item.getStr("areaCn"))
-                        .region(item.getStr("region"))
-                        .regionCn(item.getStr("regionCn"))
-                        .available(item.getInt("status") == 1)
-                        .price(item.getBigDecimal("price").doubleValue())
-                        .discountPrice(item.getBigDecimal("discountPrice").doubleValue()).build();
+                        .id(stock.getInt("id"))
+                        .area(stock.getStr("area"))
+                        .areaCn(stock.getStr("areaCn"))
+                        .region(stock.getStr("region"))
+                        .regionCn(stock.getStr("regionCn"))
+                        .available(stock.getInt("status") == 1)
+                        .price(price.doubleValue())
+                        .discountPrice(discountPrice.doubleValue())
+                        .build();
                 countries.add(country);
             }
-            LocationResponse response = LocationResponse.builder().state(k).countries(countries).build();
+            LocationResponse response = LocationResponse.builder()
+                    .state(state)
+                    .countries(countries)
+                    .build();
             list.add(response);
-        });
+        }
+
         return list;
+    }
+
+    /**
+     * 构建价格键，用于快速查找
+     */
+    private String buildPriceKey(String type, String quality, String area, String region) {
+        return String.format("%s_%s_%s_%s", type, quality, area, region);
     }
 }

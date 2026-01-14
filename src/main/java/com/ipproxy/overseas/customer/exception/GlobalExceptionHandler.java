@@ -12,6 +12,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(PurchaseException.class)
+    public ApiResponse<Void> handlePurchaseException(PurchaseException ex) {
+        return ApiResponse.error(400, ex.getMessage());
+    }
+
     @ExceptionHandler(UnauthorizedException.class)
     public ApiResponse<Void> handleUnauthorized(UnauthorizedException ex) {
         return ApiResponse.error(401, ex.getMessage());
