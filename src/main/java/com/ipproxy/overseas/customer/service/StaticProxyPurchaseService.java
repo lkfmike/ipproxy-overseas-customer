@@ -1,14 +1,22 @@
 package com.ipproxy.overseas.customer.service;
 
+import cn.hutool.http.HttpRequest;
+import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.ipproxy.overseas.customer.common.AsnType;
 import com.ipproxy.overseas.customer.common.Constants;
+import com.ipproxy.overseas.customer.common.ProxyProtocolType;
 import com.ipproxy.overseas.customer.common.StockCache;
+import com.ipproxy.overseas.customer.config.SupplierConfig;
 import com.ipproxy.overseas.customer.entity.Account;
+import com.ipproxy.overseas.customer.entity.AsyncOrder;
 import com.ipproxy.overseas.customer.entity.StaticProxyPrice;
 import com.ipproxy.overseas.customer.entity.proxy.PurchaseStaticProxyRequest;
 import com.ipproxy.overseas.customer.entity.proxy.PurchaseStaticProxyResponse;
 import com.ipproxy.overseas.customer.exception.PurchaseException;
+import com.ipproxy.overseas.customer.mapper.AsyncOrderMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -17,11 +25,16 @@ import java.math.RoundingMode;
 import java.util.*;
 
 @Service
+@Slf4j
 public class StaticProxyPurchaseService {
     @Autowired
     private StaticProxyPriceService staticProxyPriceService;
     @Autowired
     private AccountService accountService;
+    @Autowired
+    private SupplierConfig supplierConfig;
+    @Autowired
+    private AsyncOrderMapper asyncOrderMapper;
 
     public PurchaseStaticProxyResponse purchaseStaticProxy(Long userId, PurchaseStaticProxyRequest request) throws PurchaseException {
         // 获取库存信息
@@ -74,8 +87,53 @@ public class StaticProxyPurchaseService {
             throw new PurchaseException("余额不足，当前余额: " + formattedBalance + ", 所需金额: " + formattedTotalAmount);
         }
         //余额充足,向IP供应商发送采购请求
-
+        HttpRequest post = HttpRequest.post(supplierConfig.getStaticBatchPurchaseUrl());
+        post.header("Content-Type", "application/json");
+        post.header("Authorization", "Bearer " + supplierConfig.getApiToken());
+        post.body(new JSONObject()
+                .set("areaId", request.getStockId())
+                .set("batchSize", request.getQuantity())
+                .set("protocol", ProxyProtocolType.getValueByName(request.getProtocol()))
+                .set("dedicatedLine", request.getDedicatedLine())
+                .set("bandwidth", request.getBandwidth())
+                .set("autoRenewal", request.getAutoRenew())
+                .set("months", request.getPeriod() / 30)
+                .toString());
+        String orderNo;
+        try (HttpResponse httpResponse = post.execute()) {
+            JSONObject remoteResponse = JSONUtil.parseObj(httpResponse.body());
+            if (remoteResponse.getInt("code") != 200) {
+                log.warn("static proxy batch  purchase failed: " + remoteResponse);
+                throw new PurchaseException("购买失败,请联系管理员");
+            }
+            JSONObject data = remoteResponse.getJSONObject("data");
+            Boolean success = data.getBool("isSuccess");
+            if (!success) {
+                log.warn("static proxy batch  purchase failed: " + remoteResponse);
+                throw new PurchaseException("购买失败,请联系管理员");
+            }
+            orderNo = data.getStr("orderNo");
+        } catch (Exception e) {
+            log.warn("static proxy batch  purchase failed: " + e.getMessage());
+            throw new PurchaseException("购买失败,请联系管理员");
+        }
+        System.out.println(orderNo);
         //调用供应商成功之后,更新余额,创建订单
+        // 保存订单到数据库
+        AsyncOrder order = new AsyncOrder();
+        order.setOrderNo(orderNo);  // 供应商返回的订单号
+        order.setSystemOrderNo("order_" + System.currentTimeMillis() + "_" + userId);  // 系统生成的订单号
+        order.setUid(userId);
+        BigDecimal unitPrice = basePrice.multiply(daysFactor).multiply(discountRate);  // 计算实际单价
+        order.setUnitPrice(unitPrice);
+        order.setQuantity(request.getQuantity());
+        order.setAutoRenew(request.getAutoRenew());
+        order.setProtocol(request.getProtocol()); // 设置协议
+        order.setAsnType(stock.getStr("asnType"));
+        order.setQuality(stock.getStr("quality"));
+        order.setStockId(request.getStockId());
+        order.setStatus("completed");
+        asyncOrderMapper.insert(order);
         // 构建响应
         PurchaseStaticProxyResponse.Detail detail = new PurchaseStaticProxyResponse.Detail();
         detail.setBasePrice(discountedBasePrice.setScale(2, RoundingMode.HALF_UP));

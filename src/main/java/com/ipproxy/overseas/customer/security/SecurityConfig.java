@@ -15,13 +15,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Autowired
     private JwtTokenService jwtTokenService;
-    
+
     @Autowired
     private InMemoryTokenStore tokenStore;
-    
+
     @Autowired
     private RestAuthenticationEntryPoint authenticationEntryPoint;
-    
+
     @Autowired
     private RestAccessDeniedHandler accessDeniedHandler;
 
@@ -36,17 +36,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         http.csrf().disable();
         http.logout().disable();
         http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
-
         http.exceptionHandling()
                 .authenticationEntryPoint(authenticationEntryPoint)
                 .accessDeniedHandler(accessDeniedHandler);
-
         http.authorizeRequests()
                 .antMatchers("/auth/login", "/auth/register", "/auth/refresh", "/auth/send-code").permitAll()
                 .antMatchers("/swagger-ui.html", "/swagger-resources/**", "/v2/api-docs", "/webjars/**").permitAll()
                 .antMatchers("/ping").permitAll()
                 .anyRequest().authenticated();
-
         http.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
     }
 }

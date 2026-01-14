@@ -1,5 +1,8 @@
 package com.ipproxy.overseas.customer.exception;
 
+import lombok.Getter;
+
+@Getter
 public class PurchaseException extends Exception {
     private int errorCode;
 
@@ -21,7 +24,4 @@ public class PurchaseException extends Exception {
         this.errorCode = errorCode;
     }
 
-    public int getErrorCode() {
-        return errorCode;
-    }
 }

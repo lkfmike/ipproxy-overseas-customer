@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ipproxy.overseas.customer.mapper.AsyncOrderMapper">
+
+    <insert id="insert" parameterType="com.ipproxy.overseas.customer.entity.AsyncOrder">
+        INSERT INTO asyn_order (order_no, system_order_no, uid, unit_price, quantity,
+                               auto_renew, protocol, asn_type, quality, stock_id, created_at, status)
+        VALUES (#{orderNo}, #{systemOrderNo}, #{uid}, #{unitPrice}, #{quantity},
+                #{autoRenew}, #{protocol}, #{asnType}, #{quality}, #{stockId},
+                NOW(), #{status})
+    </insert>
+
+</mapper>
