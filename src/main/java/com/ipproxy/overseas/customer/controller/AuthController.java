@@ -5,7 +5,6 @@ import com.ipproxy.overseas.customer.common.Constants;
 import com.ipproxy.overseas.customer.entity.Account;
 import com.ipproxy.overseas.customer.entity.auth.LoginRequest;
 import com.ipproxy.overseas.customer.entity.auth.LoginResponse;
-import com.ipproxy.overseas.customer.entity.auth.MeResponse;
 import com.ipproxy.overseas.customer.entity.auth.RefreshRequest;
 import com.ipproxy.overseas.customer.entity.auth.RefreshResponse;
 import com.ipproxy.overseas.customer.entity.auth.RegisterRequest;
@@ -19,8 +18,12 @@ import com.ipproxy.overseas.customer.service.AccountService;
 import com.ipproxy.overseas.customer.service.VerifyCodeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.time.Instant;
@@ -28,13 +31,13 @@ import java.time.Instant;
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
-    @Autowired
+    @Resource
     private AccountService accountService;
-    @Autowired
+    @Resource
     private JwtTokenService jwtTokenService;
-    @Autowired
+    @Resource
     private InMemoryTokenStore tokenStore;
-    @Autowired
+    @Resource
     private VerifyCodeService verifyCodeService;
 
     @PostMapping("/send-code")
@@ -97,9 +100,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ApiResponse<Void> logout(Authentication authentication, HttpServletRequest request) {
-        if (authentication == null || authentication.getPrincipal() == null) {
-            throw new UnauthorizedException("未授权");
-        }
+        getJwtUser(authentication);
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring("Bearer ".length()).trim();
@@ -112,5 +113,12 @@ public class AuthController {
             }
         }
         return ApiResponse.successMessage("退出成功");
+    }
+
+    private JwtUser getJwtUser(Authentication authentication) {
+        if (authentication == null || authentication.getPrincipal() == null) {
+            throw new UnauthorizedException("未授权");
+        }
+        return (JwtUser) authentication.getPrincipal();
     }
 }

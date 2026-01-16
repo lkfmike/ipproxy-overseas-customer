@@ -4,8 +4,6 @@ import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import com.ipproxy.overseas.customer.common.AsnType;
-import com.ipproxy.overseas.customer.common.Constants;
 import com.ipproxy.overseas.customer.common.ProxyProtocolType;
 import com.ipproxy.overseas.customer.common.StockCache;
 import com.ipproxy.overseas.customer.config.SupplierConfig;
@@ -16,24 +14,27 @@ import com.ipproxy.overseas.customer.entity.proxy.PurchaseStaticProxyRequest;
 import com.ipproxy.overseas.customer.entity.proxy.PurchaseStaticProxyResponse;
 import com.ipproxy.overseas.customer.exception.PurchaseException;
 import com.ipproxy.overseas.customer.mapper.AsyncOrderMapper;
+import com.ipproxy.overseas.customer.utils.PriceUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
 public class StaticProxyPurchaseService {
-    @Autowired
+    @Resource
     private StaticProxyPriceService staticProxyPriceService;
-    @Autowired
+    @Resource
     private AccountService accountService;
-    @Autowired
+    @Resource
     private SupplierConfig supplierConfig;
-    @Autowired
+    @Resource
     private AsyncOrderMapper asyncOrderMapper;
 
     public PurchaseStaticProxyResponse purchaseStaticProxy(Long userId, PurchaseStaticProxyRequest request) throws PurchaseException {
@@ -50,13 +51,9 @@ public class StaticProxyPurchaseService {
         // 获取价格信息
         Map<String, StaticProxyPrice> priceMap = buildPriceMap(userId);
         // 计算基础价格
-        String area = stock.getStr("area");
-        String region = stock.getStr("region");
-        String asnType = stock.getStr("asnType");
-        String quality = stock.getStr("quality");
-        String priceKey = buildPriceKey(asnType, quality, area, region);
+        String priceKey = PriceUtils.buildPriceKeyFromStock(stock);
         StaticProxyPrice priceInfo = priceMap.get(priceKey);
-        BigDecimal basePrice = new BigDecimal("0");
+        BigDecimal basePrice;
         if (priceInfo != null && priceInfo.getPrice() != null) {
             basePrice = priceInfo.getPrice();
         } else {
@@ -79,7 +76,7 @@ public class StaticProxyPurchaseService {
         // 计算折扣（基于折扣差额）
         BigDecimal discount = totalBasePrice.add(rawBandwidthPrice).subtract(discountedBasePrice.add(discountedBandwidthPrice));
         // 计算总金额
-        BigDecimal totalAmount = calculateFinalAmount(discountedBasePrice, discountedBandwidthPrice, BigDecimal.ZERO);
+        BigDecimal totalAmount = calculateFinalAmount(discountedBasePrice, discountedBandwidthPrice);
         // 检查余额是否充足
         BigDecimal formattedBalance = account.getBalance().setScale(2, RoundingMode.HALF_UP);
         BigDecimal formattedTotalAmount = totalAmount.setScale(2, RoundingMode.HALF_UP);
@@ -132,8 +129,15 @@ public class StaticProxyPurchaseService {
         order.setAsnType(stock.getStr("asnType"));
         order.setQuality(stock.getStr("quality"));
         order.setStockId(request.getStockId());
+        order.setDedicatedLine(request.getDedicatedLine());
+        order.setBandwidth(request.getBandwidth());
         order.setStatus("completed");
         asyncOrderMapper.insert(order);
+        
+        // 更新用户余额
+        BigDecimal newBalance = account.getBalance().subtract(totalAmount);
+        accountService.updateBalance(userId, newBalance);
+        
         // 构建响应
         PurchaseStaticProxyResponse.Detail detail = new PurchaseStaticProxyResponse.Detail();
         detail.setBasePrice(discountedBasePrice.setScale(2, RoundingMode.HALF_UP));
@@ -147,8 +151,8 @@ public class StaticProxyPurchaseService {
     }
 
 
-    private BigDecimal calculateFinalAmount(BigDecimal basePrice, BigDecimal bandwidthPrice, BigDecimal discount) {
-        BigDecimal totalAmount = basePrice.add(bandwidthPrice).subtract(discount);
+    private BigDecimal calculateFinalAmount(BigDecimal basePrice, BigDecimal bandwidthPrice) {
+        BigDecimal totalAmount = basePrice.add(bandwidthPrice);
         if (totalAmount.compareTo(BigDecimal.ZERO) < 0) {
             return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         }
@@ -157,12 +161,7 @@ public class StaticProxyPurchaseService {
 
     private Map<String, StaticProxyPrice> buildPriceMap(Long userId) {
         List<StaticProxyPrice> prices = staticProxyPriceService.getProxyPriceListByUid(userId);
-        Map<String, StaticProxyPrice> priceMap = new HashMap<>();
-        for (StaticProxyPrice price : prices) {
-            String key = buildPriceKey(price.getType(), price.getQuality(), price.getArea(), price.getRegion());
-            priceMap.put(key, price);
-        }
-        return priceMap;
+        return PriceUtils.buildPriceMap(prices);
     }
 
     private JSONObject getStockById(Integer stockId) {
@@ -179,9 +178,6 @@ public class StaticProxyPurchaseService {
         return null;
     }
 
-    private String buildPriceKey(String type, String quality, String area, String region) {
-        return String.format("%s_%s_%s_%s", type, quality, area, region);
-    }
 
     /**
      * 根据使用天数计算天数系数
@@ -214,7 +210,7 @@ public class StaticProxyPurchaseService {
             throw new IllegalArgumentException("带宽规格不能为空");
         }
 
-        BigDecimal pricePerUnit = BigDecimal.ZERO;
+        BigDecimal pricePerUnit;
         switch (bandwidth) {
             case "3M":
                 pricePerUnit = new BigDecimal("1.5");

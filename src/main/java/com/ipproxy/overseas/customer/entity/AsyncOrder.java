@@ -18,6 +18,8 @@ public class AsyncOrder {
     private String asnType;              // ASN类型
     private String quality;              // 质量类型
     private Integer stockId;             // 库存ID
+    private Boolean dedicatedLine;       // 是否选择专线中转
+    private String bandwidth;            // 专线带宽
     private LocalDateTime createdAt;     // 创建时间
     private String status;               // 订单状态
 }

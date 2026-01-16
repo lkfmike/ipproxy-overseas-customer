@@ -58,6 +58,8 @@ CREATE TABLE `asyn_order`
     `asn_type`            varchar(50)  NOT NULL DEFAULT '' COMMENT 'ASN类型',
     `quality`             varchar(50)  NOT NULL DEFAULT '' COMMENT '质量类型',
     `stock_id`            int          NOT NULL COMMENT '库存ID',
+    `dedicated_line`      tinyint(1)   NULL COMMENT '是否选择专线中转',
+    `bandwidth`           varchar(10)  NULL COMMENT '专线带宽',
     `created_at`          timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `status`              varchar(20)  NOT NULL DEFAULT 'pending' COMMENT '订单状态',
     PRIMARY KEY (`id`),

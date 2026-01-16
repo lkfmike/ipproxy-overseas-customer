@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import javax.annotation.Resource;
 import javax.validation.Valid;
 import java.math.BigDecimal;
 
@@ -18,10 +19,10 @@ import java.math.BigDecimal;
 @RequestMapping("/user")
 public class AccountController {
 
-    @Autowired
+    @Resource
     private AccountService accountService;
 
-    @Autowired
+    @Resource
     private VerifyCodeService verifyCodeService;
 
     @GetMapping("/profile")

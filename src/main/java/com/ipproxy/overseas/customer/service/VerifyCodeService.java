@@ -11,7 +11,6 @@ import java.util.concurrent.TimeUnit;
 @Service
 @Slf4j
 public class VerifyCodeService {
-
     // 使用 Guava Cache 存储验证码，设置写入后1小时过期
     private final Cache<String, String> codeCache = CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS).build();
     // 使用 Guava Cache 存储验证码发送时间，用于频率控制，设置写入后60秒过期

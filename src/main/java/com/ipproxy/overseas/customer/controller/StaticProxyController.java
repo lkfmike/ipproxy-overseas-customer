@@ -13,11 +13,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.annotation.Resource;
+
 @RestController
 @RequestMapping("/proxy")
 public class StaticProxyController extends BaseController {
 
-    @Autowired
+    @Resource
     private StaticProxyPurchaseService staticProxyPurchaseService;
 
     /**

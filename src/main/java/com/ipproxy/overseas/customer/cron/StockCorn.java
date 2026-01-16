@@ -14,12 +14,13 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.List;
 
 @Component
 public class StockCorn {
-    @Autowired
+    @Resource
     private SupplierConfig supplierConfig;
 
     @PostConstruct

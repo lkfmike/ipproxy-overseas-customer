@@ -6,24 +6,21 @@ import com.ipproxy.overseas.customer.exception.UnauthorizedException;
 import com.ipproxy.overseas.customer.mapper.AccountMapper;
 import com.ipproxy.overseas.customer.utils.CommonUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @Slf4j
 public class AccountService {
-
-    @Autowired
+    @Resource
     private AccountMapper accountMapper;
-
-    @Autowired
+    @Resource
     private PasswordEncoder passwordEncoder;
-
-    @Autowired
+    @Resource
     private VerifyCodeService verifyCodeService;
 
     public Account register(String email, String password, String code, String telegram, String inviteCode) {
@@ -33,17 +30,20 @@ public class AccountService {
             throw new IllegalArgumentException("邮箱已注册");
         }
         Long invitedBy = 0L;
-        if (inviteCode != null && !inviteCode.trim().isEmpty()) {
-            Account inviter = accountMapper.selectByInviteCode(inviteCode.trim());
-            if (inviter == null) {
-                log.warn("Register failed: invalid invite code {}", inviteCode);
-                throw new IllegalArgumentException("邀请码无效");
-            }
-            invitedBy = inviter.getUid();
+        if (inviteCode == null || inviteCode.trim().isEmpty()) {
+            log.warn("Register failed: invite code is required");
+            throw new IllegalArgumentException("邀请码不能为空");
         }
+        Account inviter = accountMapper.selectByInviteCode(inviteCode.trim());
+        if (inviter == null) {
+            log.warn("Register failed: invalid invite code {}", inviteCode);
+            throw new IllegalArgumentException("邀请码无效");
+        }
+        invitedBy = inviter.getUid();
         // 验证注册验证码
         try {
-            verifyCodeService.verifyCode(normalizedEmail, Constants.VerifyCodeType.REGISTER, code);
+            boolean verification = verifyCodeService.verifyCode(normalizedEmail, Constants.VerifyCodeType.REGISTER, code);
+            log.info("Verification code verification result for email {}: {}", normalizedEmail, verification);
         } catch (RuntimeException e) {
             log.warn("Register failed: verification code error for email {}: {}", normalizedEmail, e.getMessage());
             throw new IllegalArgumentException(e.getMessage());
@@ -115,6 +115,11 @@ public class AccountService {
 
     public Account getAccountByEmail(String email) {
         return accountMapper.selectByEmail(email);
+    }
+
+    public void updateBalance(Long uid, BigDecimal newBalance) {
+        Account account = Account.builder().uid(uid).balance(newBalance).build();
+        accountMapper.updateAccount(account);
     }
 
     public String normalizeEmail(String email) {

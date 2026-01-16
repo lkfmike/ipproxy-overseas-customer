@@ -17,16 +17,8 @@ public class ApiResponse<T> {
         return new ApiResponse<>(200, "success", data);
     }
 
-    public static ApiResponse<Void> success() {
-        return new ApiResponse<>(200, "success", null);
-    }
-
     public static ApiResponse<Void> successMessage(String message) {
         return new ApiResponse<>(200, message, null);
-    }
-
-    public static <T> ApiResponse<T> success(String message, T data) {
-        return new ApiResponse<>(200, message, data);
     }
 
     public static <T> ApiResponse<T> error(int code, String message) {

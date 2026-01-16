@@ -5,10 +5,10 @@ import com.ipproxy.overseas.customer.security.JwtUser;
 import org.springframework.security.core.Authentication;
 
 public class BaseController {
-    
+
     /**
      * 获取当前认证用户信息
-     * 
+     *
      * @param authentication 认证信息
      * @return JwtUser对象
      */
@@ -18,10 +18,10 @@ public class BaseController {
         }
         return (JwtUser) authentication.getPrincipal();
     }
-    
+
     /**
      * 从认证信息中获取用户ID
-     * 
+     *
      * @param authentication 认证信息
      * @return 用户ID
      */

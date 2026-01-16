@@ -9,6 +9,8 @@ import com.ipproxy.overseas.customer.exception.UnauthorizedException;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.Date;
@@ -17,6 +19,8 @@ import java.util.UUID;
 
 @Service
 public class JwtTokenService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(JwtTokenService.class);
 
     @Autowired
     private JwtProperties properties;
@@ -64,6 +68,7 @@ public class JwtTokenService {
         DecodedJWT jwt = verify(token);
         String tokenType = jwt.getClaim("tokenType").asString();
         if (!"access".equals(tokenType)) {
+            LOGGER.warn("Verify access token failed: tokenType={}, jti={}", tokenType, jwt.getId());
             throw new UnauthorizedException("未授权");
         }
         String userId = jwt.getClaim("uid").asString();
@@ -75,6 +80,7 @@ public class JwtTokenService {
         DecodedJWT jwt = verify(token);
         String tokenType = jwt.getClaim("tokenType").asString();
         if (!"refresh".equals(tokenType)) {
+            LOGGER.warn("Verify refresh token failed: tokenType={}, jti={}", tokenType, jwt.getId());
             throw new UnauthorizedException("未授权");
         }
         String userId = jwt.getClaim("uid").asString();
@@ -91,6 +97,7 @@ public class JwtTokenService {
                     .build();
             return verifier.verify(token);
         } catch (JWTVerificationException ex) {
+            LOGGER.warn("JWT verification failed: {}", ex.getMessage());
             throw new UnauthorizedException("未授权");
         }
     }
